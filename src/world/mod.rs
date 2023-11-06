@@ -29,14 +29,15 @@ impl World {
             npcs: Vec::new(),
         };
 
-        world.spawn_npc(NPCType::Fish);
-        world.spawn_npc(NPCType::Fish);
-        world.spawn_npc(NPCType::Fish);
-        world.spawn_npc(NPCType::Troll);
-        world.spawn_npc(NPCType::Troll);
-        world.spawn_npc(NPCType::Troll);
-        world.spawn_npc(NPCType::Troll);
-        world.spawn_npc(NPCType::Troll);
+        // spawn fishes
+        for _ in 0..3 {
+            world.spawn_npc(NPCType::Fish);
+        }
+
+        // spawn trolls
+        for _ in 0..5 {
+            world.spawn_npc(NPCType::Troll);
+        }
 
         return world;
     }
@@ -100,5 +101,48 @@ impl World {
             }
             print!("\r\n"); // Newline at the end of each row
         }
+    }
+
+    pub fn draw_to_string(&self) -> String {
+        let mut buffer = String::new();
+
+        for y in 0..terrain::TERRAIN_HEIGHT {
+            for x in 0..terrain::TERRAIN_WIDTH {
+                if x == self.player.x as usize && y == self.player.y as usize {
+                    buffer.push_str("🏃");
+                } else {
+                    let mut npc_drawn = false;
+                    for npc in &self.npcs {
+                        if x == npc.x as usize && y == npc.y as usize {
+                            let npc_symbol = match npc.npc_type {
+                                NPCType::Fish => "🐠",
+                                NPCType::Troll => "👹",
+                                // Add other NPC types here as needed
+                            };
+                            buffer.push_str(npc_symbol);
+                            npc_drawn = true;
+                            break; // Only one NPC can occupy a tile, no need to check others
+                        }
+                    }
+
+                    if !npc_drawn {
+                        let index = y * terrain::TERRAIN_WIDTH + x;
+                        let symbol = match self.terrain.tiles[index] {
+                            terrain::TileType::Grass => '🟩',
+                            terrain::TileType::Tree => '🌲',
+                            terrain::TileType::Water => '💧',
+                            terrain::TileType::Mountain => '🗻',
+                            terrain::TileType::Sand => '🟨',
+                            terrain::TileType::Castle => '🏰',
+                            // ... add other tile types here as needed
+                        };
+                        buffer.push(symbol);
+                    }
+                }
+            }
+            buffer.push_str("\r\n"); // Newline at the end of each row
+        }
+
+        buffer
     }
 }

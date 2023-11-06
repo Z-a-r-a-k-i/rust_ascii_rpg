@@ -9,6 +9,7 @@ use crossterm::{
 use rand::seq::SliceRandom;
 use std::io::{self, Stdout, Write};
 use std::time::Duration;
+use std::{thread, time};
 
 pub fn start(stdout: &mut Stdout) -> Result<(), io::Error> {
     // generate world
@@ -16,7 +17,6 @@ pub fn start(stdout: &mut Stdout) -> Result<(), io::Error> {
 
     'game_loop: loop {
         // render world
-        execute!(stdout, terminal::Clear(terminal::ClearType::All))?;
         let status_message = "You are in a forest. Watch out for the trees!";
         render(&world, stdout, status_message)?;
 
@@ -33,6 +33,7 @@ pub fn start(stdout: &mut Stdout) -> Result<(), io::Error> {
         }
 
         move_npcs(&mut world);
+        thread::sleep(time::Duration::from_millis(10));
     }
 
     // If the loop exits normally, return Ok(())
@@ -130,16 +131,16 @@ fn render(world: &World, stdout: &mut Stdout, status_message: &str) -> Result<()
     // Calculate the positions for documentation and status message
     let _ = term_height - 1; // Assuming the status bar is at the bottom
 
-    // Clear the terminal
-    execute!(stdout, Clear(ClearType::All))?;
-
     // draw the documentation on top
     let documentation = "This area displays helpful\r\ninformation about the game.";
-    print!("{}\r\n\r\n", documentation);
-    // Draw the world
-    world.draw();
 
-    // draw player inventory
+    // Prepare full frame in a buffer
+    let mut frame = format!("{}\r\n\r\n", documentation);
+
+    // Draw the world into the buffer
+    frame.push_str(&world.draw_to_string());
+
+    // Build player inventory str
     let mut inventory: String = String::from("\x1b[1m\x1b[93mPlayer Inventory:\x1b[0m ");
     for item in &world.player.inventory {
         match item {
@@ -151,10 +152,15 @@ fn render(world: &World, stdout: &mut Stdout, status_message: &str) -> Result<()
             }
         }
     }
-    print!("\r\n{}\r\n", inventory);
+    // draw player inventory into the buffer
+    frame.push_str(&format!("\r\n{}\r\n", inventory));
 
-    // Draw the status message at the bottom
-    print!("\r\n{}\r\n", status_message);
+    // Draw the status message at the bottom into the buffer
+    frame.push_str(&format!("\r\n{}\r\n", status_message));
+
+    // Clear the terminal and print the buffer
+    execute!(stdout, Clear(ClearType::All))?;
+    print!("{}", frame);
 
     // Flush stdout to ensure that all terminal output is displayed
     stdout.flush()?;
