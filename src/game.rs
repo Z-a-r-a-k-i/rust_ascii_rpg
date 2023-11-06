@@ -1,77 +1,48 @@
 use crate::world::entities::*;
 use crate::world::terrain::*;
 use crate::world::World;
-use crossterm::{
-    event::{self, Event as CEvent, KeyCode, KeyEvent},
-    execute,
-    terminal::{self, Clear, ClearType},
-};
 use rand::seq::SliceRandom;
-use std::io::{self, Stdout, Write};
+use std::io::{self, Write};
+use std::thread;
 use std::time::Duration;
-use std::{thread, time};
+use termion::terminal_size;
+use termion::{clear, cursor, event::Key, input::TermRead};
 
-pub fn start(stdout: &mut Stdout) -> Result<(), io::Error> {
-    // generate world
+pub fn start<W: Write>(stdout: &mut W) -> Result<(), io::Error> {
     let mut world = World::new();
+    let stdin = io::stdin();
+    let mut keys = stdin.keys();
 
     'game_loop: loop {
         // render world
         let status_message = "You are in a forest. Watch out for the trees!";
         render(&world, stdout, status_message)?;
 
-        // Wait for user input
-        let key_event = read_key_event()?;
-
-        // Match the key code
-        match key_event.code {
-            KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                move_player(&mut world, key_event)
+        // Read user input after rendering the world
+        if let Some(key_event) = keys.next() {
+            let key_event = key_event?;
+            match key_event {
+                Key::Up | Key::Down | Key::Left | Key::Right => move_player(&mut world, key_event),
+                Key::Esc => break 'game_loop, // Exit game loop
+                _ => {}
             }
-            KeyCode::Esc => break 'game_loop, // Exit game loop
-            _ => {}
         }
 
         move_npcs(&mut world);
-        thread::sleep(time::Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10));
     }
 
-    // If the loop exits normally, return Ok(())
     Ok(())
 }
 
-fn read_key_event() -> Result<KeyEvent, io::Error> {
-    loop {
-        if event::poll(Duration::from_millis(500))? {
-            if let CEvent::Key(key_event) = event::read()? {
-                return Ok(key_event);
-            }
-        }
-    }
-}
-
-fn move_player(world: &mut World, key_event: KeyEvent) {
-    let mut dx: i32 = 0;
-    let mut dy: i32 = 0;
-    match key_event.code {
-        KeyCode::Up => {
-            dx = 0;
-            dy = -1;
-        }
-        KeyCode::Down => {
-            dx = 0;
-            dy = 1;
-        }
-        KeyCode::Left => {
-            dx = -1;
-            dy = 0;
-        }
-        KeyCode::Right => {
-            dx = 1;
-            dy = 0;
-        }
-        _ => {}
-    }
+fn move_player(world: &mut World, key_event: Key) {
+    let (dx, dy) = match key_event {
+        Key::Up => (0, -1),
+        Key::Down => (0, 1),
+        Key::Left => (-1, 0),
+        Key::Right => (1, 0),
+        _ => (0, 0),
+    };
     let destination_x = world.player.x + dx;
     let destination_y = world.player.y + dy;
 
@@ -124,9 +95,9 @@ pub fn move_npcs(world: &mut World) {
     }
 }
 
-fn render(world: &World, stdout: &mut Stdout, status_message: &str) -> Result<(), io::Error> {
+fn render<W: Write>(world: &World, stdout: &mut W, status_message: &str) -> Result<(), io::Error> {
     // Get the terminal size
-    let (_, term_height) = terminal::size()?;
+    let (_, term_height) = terminal_size()?;
 
     // Calculate the positions for documentation and status message
     let _ = term_height - 1; // Assuming the status bar is at the bottom
@@ -158,8 +129,8 @@ fn render(world: &World, stdout: &mut Stdout, status_message: &str) -> Result<()
     // Draw the status message at the bottom into the buffer
     frame.push_str(&format!("\r\n{}\r\n", status_message));
 
-    // Clear the terminal and print the buffer
-    execute!(stdout, Clear(ClearType::All))?;
+    // Clear the screen and reset cursor position
+    write!(stdout, "{}{}", clear::All, cursor::Goto(1, 1))?;
     print!("{}", frame);
 
     // Flush stdout to ensure that all terminal output is displayed
