@@ -12,10 +12,14 @@ pub enum TileType {
     Mountain,
     Sand,
     Castle,
+    Chest,
+    SpiderWeb,
+    Heart,
 }
 
 pub struct Terrain {
     pub tiles: [TileType; TERRAIN_WIDTH * TERRAIN_HEIGHT],
+    pub chest_found: bool,
 }
 
 impl Terrain {
@@ -23,6 +27,7 @@ impl Terrain {
         // init terrain with grass tiles
         let mut terrain = Terrain {
             tiles: [TileType::Grass; TERRAIN_WIDTH * TERRAIN_HEIGHT],
+            chest_found: false,
         };
 
         let mut rng = rand::thread_rng();

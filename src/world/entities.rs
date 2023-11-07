@@ -5,6 +5,7 @@ pub struct Player {
     pub y: i32,
     pub name: String,
     pub inventory: Vec<ItemType>,
+    pub dead: bool,
 }
 
 pub struct NPC {
@@ -18,15 +19,20 @@ pub struct Chest {
     pub y: i32,
 }
 
+#[derive(PartialEq, Eq)]
 pub enum ItemType {
     Sword,
     Axe,
+    Harpoon,
+    Snorkel,
+    Key,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum NPCType {
     Fish,
     Troll,
+    Spider,
 }
 
 impl NPCType {
@@ -35,6 +41,7 @@ impl NPCType {
         match self {
             NPCType::Fish => TileType::Water,
             NPCType::Troll => TileType::Grass,
+            NPCType::Spider => TileType::Grass,
         }
     }
 }
